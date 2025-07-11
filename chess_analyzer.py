@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """
-Chess Position Analyzer - A utility to analyze chess positions using Stockfish
+Chess Position Analyzer - A one-shot utility to analyze chess positions using Stockfish
+Usage: 
+  python chess_analyzer.py                    # Analyze starting position
+  python chess_analyzer.py e4                 # Analyze after 1.e4
+  python chess_analyzer.py e4 e5              # Analyze after 1.e4 e5
+  python chess_analyzer.py "start"            # Analyze starting position
+  python chess_analyzer.py "<FEN string>"     # Analyze specific position
+
 Supports multiple input formats and provides move recommendations with reasoning.
 """
 
@@ -129,14 +136,16 @@ class ChessAnalyzer:
                     move = analysis['pv'][0]
                     score = analysis.get('score', chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE))
                     
-                    # Convert score to centipawns from current player's perspective
+                    # Convert score to centipawns from White's perspective (always)
                     if score.is_mate():
-                        if score.white().mate() > 0:
-                            eval_str = f"Mate in {score.white().mate()}"
+                        mate_value = score.white().mate()
+                        if mate_value > 0:
+                            eval_str = f"Mate in {mate_value}"
                         else:
-                            eval_str = f"Mate in {-score.white().mate()}"
+                            eval_str = f"Mate in {-mate_value}"
                     else:
-                        cp_score = score.white().score() if board.turn == chess.WHITE else -score.white().score()
+                        # Always show score from White's perspective
+                        cp_score = score.white().score()
                         eval_str = f"{cp_score/100:+.2f}"
                     
                     # Get principal variation (first few moves)
@@ -161,7 +170,6 @@ class ChessAnalyzer:
 
 def print_analysis(board: chess.Board, analysis: List[Tuple[str, float, str, str]]):
     """Print formatted analysis results."""
-    print(f"\nPosition Analysis:")
     print(f"Turn: {'White' if board.turn == chess.WHITE else 'Black'}")
     print(f"FEN: {board.fen()}")
     print("\nTop 3 Recommended Moves:")
@@ -175,26 +183,12 @@ def print_analysis(board: chess.Board, analysis: List[Tuple[str, float, str, str
         print()
 
 def main():
-    print("Chess Position Analyzer")
-    print("======================")
-    print("Supported formats:")
-    print("- FEN notation: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'")
-    print("- Move sequence: 'e4 e5 Nf3 Nc6'")
-    print("- Starting position: 'start' or 'new'")
-    print("- Type 'quit' to exit")
-    print()
-    
-    analyzer = ChessAnalyzer()
-    
-    while True:
+    if len(sys.argv) > 1:
+        # Analyze position from command line arguments
+        position_input = " ".join(sys.argv[1:])
+        
         try:
-            position_input = input("Enter chess position: ").strip()
-            
-            if position_input.lower() in ['quit', 'exit', 'q']:
-                break
-            
-            if not position_input:
-                continue
+            analyzer = ChessAnalyzer()
             
             # Parse the position
             board = analyzer.parse_position(position_input)
@@ -207,10 +201,27 @@ def main():
             
         except ValueError as e:
             print(f"Error parsing position: {e}")
+            sys.exit(1)
         except Exception as e:
             print(f"Analysis error: {e}")
-        
-        print("-" * 80)
+            sys.exit(1)
+    else:
+        # No arguments = analyze starting position
+        try:
+            analyzer = ChessAnalyzer()
+            
+            # Parse starting position
+            board = analyzer.parse_position("start")
+            
+            # Analyze the position
+            analysis = analyzer.analyze_position(board)
+            
+            # Print results
+            print_analysis(board, analysis)
+            
+        except Exception as e:
+            print(f"Analysis error: {e}")
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()

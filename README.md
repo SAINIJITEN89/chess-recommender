@@ -54,27 +54,58 @@ A terminal-based chess utility that uses Stockfish to analyze positions and sugg
 
 ## Usage
 
-### Interactive Mode
+### Command Line Analysis
 ```bash
+# Activate virtual environment first
 source venv/bin/activate
+
+# Analyze starting position (no arguments)
 python chess_analyzer.py
+
+# Analyze positions from command line
+python chess_analyzer.py e4
+python chess_analyzer.py e4 e5
+python chess_analyzer.py start
+python chess_analyzer.py "e4 e5 Nf3 Nc6 Bb5"
+python chess_analyzer.py "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"
 ```
 
-**Interactive commands:**
-- Enter any position using the supported formats below
-- Type `quit`, `exit`, or `q` to exit
-- Press Ctrl+C to interrupt analysis
+### Easy Usage with Wrapper Script
+The repository includes a `chessbuddy` wrapper script for convenient usage:
+
+```bash
+# Use the wrapper script directly
+./chessbuddy          # Analyze starting position
+./chessbuddy e4       # Analyze after 1.e4
+./chessbuddy e4 e5    # Analyze after 1.e4 e5
+./chessbuddy "e4 e5 Nf3 Nc6"  # Analyze longer sequences
+```
+
+### Create a Global Alias
+To use `chessbuddy` from anywhere, add this function to your `~/.bash_aliases`:
+
+```bash
+# Add this function to ~/.bash_aliases
+chessbuddy() {
+    cd /path/to/chess-recommender && source venv/bin/activate && python chess_analyzer.py "$@"
+}
+
+# Or run the setup script
+./setup_alias.sh
+```
+
+Then you can use it from anywhere:
+```bash
+chessbuddy           # Analyze starting position
+chessbuddy e4        # Analyze after 1.e4  
+chessbuddy e4 e5     # Analyze after 1.e4 e5
+chessbuddy "e4 e5 Nf3 Nc6"  # Analyze longer sequences
+```
 
 ### Test with Sample Positions
 ```bash
 source venv/bin/activate
 python test_positions.py
-```
-
-### Command Line Analysis
-You can also analyze single positions by piping input:
-```bash
-echo "e4 e5 Nf3" | source venv/bin/activate && python chess_analyzer.py
 ```
 
 ### Supported Input Formats
