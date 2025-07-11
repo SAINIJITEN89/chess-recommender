@@ -168,16 +168,121 @@ class ChessAnalyzer:
         except Exception as e:
             raise Exception(f"Analysis failed: {e}")
 
+# ANSI color codes for terminal output
+class Colors:
+    WHITE = '\033[97m'
+    BLACK = '\033[90m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    RED = '\033[91m'
+    BOLD = '\033[1m'
+    RESET = '\033[0m'
+
+def detect_opening(board: chess.Board) -> Optional[str]:
+    """Detect opening name from current position."""
+    # Reconstruct moves from starting position
+    temp_board = chess.Board()
+    moves = []
+    
+    # This is a simplified approach - in practice, we'd need to track the actual game
+    # For now, we'll use common opening patterns based on piece positions
+    
+    opening_patterns = {
+        # Starting position
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1": "Starting Position",
+        
+        # After 1.e4
+        "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1": "King's Pawn Opening",
+        
+        # After 1.e4 e5
+        "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2": "King's Pawn Game",
+        
+        # After 1.e4 c5
+        "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2": "Sicilian Defense",
+        
+        # After 1.d4
+        "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1": "Queen's Pawn Opening",
+        
+        # After 1.d4 d5
+        "rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2": "Queen's Pawn Game",
+        
+        # After 1.e4 e5 2.Nf3
+        "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2": "King's Knight Opening",
+        
+        # After 1.e4 e5 2.Nf3 Nc6
+        "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3": "King's Knight Game",
+        
+        # After 1.e4 e5 2.Nf3 Nc6 3.Bb5 (Ruy Lopez)
+        "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3": "Ruy Lopez",
+        
+        # After 1.e4 e5 2.Nf3 Nc6 3.Bc4 (Italian Game)
+        "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3": "Italian Game",
+        
+        # After 1.e4 e5 2.Nf3 f5 (Latvian Gambit)
+        "rnbqkbnr/pppp2pp/8/4pp2/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 3": "Latvian Gambit",
+    }
+    
+    fen_without_move_counters = " ".join(board.fen().split()[:4])
+    full_fen = board.fen()
+    
+    # Check for exact FEN match first
+    if full_fen in opening_patterns:
+        return opening_patterns[full_fen]
+    
+    # Check for positional match (without move counters)
+    for pattern_fen, name in opening_patterns.items():
+        pattern_without_counters = " ".join(pattern_fen.split()[:4])
+        if fen_without_move_counters == pattern_without_counters:
+            return name
+    
+    return None
+
+def get_evaluation_color(eval_str: str) -> str:
+    """Get color for evaluation based on advantage level."""
+    try:
+        # Extract numeric value from evaluation string
+        if "Mate" in eval_str:
+            return Colors.GREEN + Colors.BOLD  # Mate is always significant
+        
+        eval_num = float(eval_str.replace('+', '').replace('-', ''))
+        
+        if eval_num >= 1.0:
+            return Colors.GREEN  # Strong advantage
+        elif eval_num >= 0.3:
+            return Colors.YELLOW  # Slight advantage
+        else:
+            return Colors.WHITE  # Equal/minimal advantage
+    except:
+        return Colors.WHITE  # Default
+
 def print_analysis(board: chess.Board, analysis: List[Tuple[str, float, str, str]]):
-    """Print formatted analysis results."""
-    print(f"Turn: {'White' if board.turn == chess.WHITE else 'Black'}")
+    """Print formatted analysis results with color coding."""
+    # Color indicators for turn
+    white_indicator = "⚪"
+    black_indicator = "⚫"
+    
+    if board.turn == chess.WHITE:
+        turn_display = f"\nTurn: {Colors.WHITE}{white_indicator} White{Colors.RESET}"
+    else:
+        turn_display = f"\nTurn: {Colors.BLACK}{Colors.BOLD}{black_indicator} Black{Colors.RESET}"
+    
     print(f"FEN: {board.fen()}")
-    print("\nTop 3 Recommended Moves:")
-    print("-" * 80)
+    
+    # Detect and display opening name if available
+    opening = detect_opening(board)
+    if opening:
+        print(f"Opening: {Colors.BLUE}{Colors.BOLD}{opening}{Colors.RESET}")
+    
+    print(turn_display)
+    print(f"\n{Colors.BOLD}Top 3 Recommended Moves:{Colors.RESET}")
+    print("-" * 60)
     
     for i, (move, evaluation, pv, reasoning) in enumerate(analysis, 1):
-        print(f"{i}. {move}")
-        print(f"   Evaluation: {evaluation}")
+        eval_color = get_evaluation_color(evaluation)
+        print(f"{Colors.BOLD}{i}.{Colors.RESET} {Colors.BOLD}{move}{Colors.RESET}")
+        print(f"   Evaluation: {eval_color}{evaluation}{Colors.RESET}")
         print(f"   Principal Variation: {pv}")
         print(f"   Reasoning: {reasoning}")
         print()
