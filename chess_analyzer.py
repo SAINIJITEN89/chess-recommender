@@ -193,35 +193,131 @@ def detect_opening(board: chess.Board) -> Optional[str]:
         # Starting position
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1": "Starting Position",
         
-        # After 1.e4
+        # === KING'S PAWN OPENINGS (1.e4) ===
         "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1": "King's Pawn Opening",
-        
-        # After 1.e4 e5
         "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2": "King's Pawn Game",
         
-        # After 1.e4 c5
-        "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2": "Sicilian Defense",
-        
-        # After 1.d4
-        "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1": "Queen's Pawn Opening",
-        
-        # After 1.d4 d5
-        "rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2": "Queen's Pawn Game",
-        
-        # After 1.e4 e5 2.Nf3
+        # King's Knight Opening
         "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2": "King's Knight Opening",
-        
-        # After 1.e4 e5 2.Nf3 Nc6
         "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3": "King's Knight Game",
         
-        # After 1.e4 e5 2.Nf3 Nc6 3.Bb5 (Ruy Lopez)
-        "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3": "Ruy Lopez",
-        
-        # After 1.e4 e5 2.Nf3 Nc6 3.Bc4 (Italian Game)
+        # Italian Game
         "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3": "Italian Game",
+        "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4": "Italian Game, Knight Defense",
+        "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 5 4": "Italian Game, Classical",
         
-        # After 1.e4 e5 2.Nf3 f5 (Latvian Gambit)
+        # Spanish/Ruy Lopez
+        "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3": "Ruy Lopez",
+        "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3": "Spanish Opening",
+        "r1bqkbnr/pppp2pp/2n2p2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4": "Ruy Lopez, Steinitz Defense",
+        "r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4": "Ruy Lopez, Morphy Defense",
+        "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4": "Ruy Lopez, Berlin Defense",
+        
+        # Scotch Game
+        "r1bqkbnr/pppp1ppp/2n5/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq - 0 3": "Scotch Game",
+        "r1bqkbnr/pppp1ppp/2n5/8/3pP3/5N2/PPP2PPP/RNBQKB1R w KQkq - 0 4": "Scotch Game, Classical",
+        
+        # Four Knights Game
+        "r1bqkb1r/pppp1ppp/2n2n2/4p3/4P3/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 4 4": "Four Knights Game",
+        "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/2N2N2/PPPP1PPP/R1B1K2R b KQkq - 5 4": "Four Knights, Fried Liver Attack",
+        
+        # King's Gambit
+        "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2": "King's Gambit",
+        "rnbqkbnr/pppp1p1p/8/4p1p1/4PP2/8/PPPP2PP/RNBQKBNR w KQkq - 0 3": "King's Gambit Accepted",
+        "rnbqkbnr/pppp1ppp/8/8/4Pp2/8/PPPP2PP/RNBQKBNR w KQkq - 0 3": "King's Gambit Declined",
+        
+        # Vienna Game
+        "rnbqkbnr/pppp1ppp/8/4p3/4P3/2N5/PPPP1PPP/R1BQKBNR b KQkq - 1 2": "Vienna Game",
+        "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 3": "Vienna Game, Main Line",
+        
+        # Center Game
+        "rnbqkbnr/pppp1ppp/8/4p3/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 2": "Center Game",
+        
+        # Petrov's Defense
+        "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3": "Petrov's Defense",
+        "rnbqkb1r/pppp1ppp/5n2/4N3/4P3/8/PPPP1PPP/RNBQKB1R b KQkq - 3 3": "Petrov's Defense, Classical",
+        
+        # === SICILIAN DEFENSE VARIATIONS (1.e4 c5) ===
+        "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2": "Sicilian Defense",
+        "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2": "Sicilian Defense, Open",
+        "rnbqkbnr/pppppppp/8/8/2PP4/8/PP2PPPP/RNBQKBNR b KQkq - 0 2": "Sicilian Defense, Closed",
+        
+        # Sicilian Dragon
+        "rnbqkb1r/pp1ppppp/5n2/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3": "Sicilian Defense, Alekhine Variation",
+        "rnbqk2r/pp1pppbp/5np1/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 3 4": "Sicilian Defense, Dragon Variation",
+        "rnbqkb1r/pp1ppp1p/5np1/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 4": "Sicilian Defense, Accelerated Dragon",
+        
+        # Sicilian Najdorf
+        "rnbqkb1r/1p1ppppp/p4n2/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 4": "Sicilian Defense, Najdorf Variation",
+        
+        # === FRENCH DEFENSE (1.e4 e6) ===
+        "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2": "French Defense",
+        "rnbqkbnr/pppp1ppp/4p3/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 2": "French Defense, Advance Variation",
+        "rnbqkbnr/ppp2ppp/4p3/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3": "French Defense, Exchange Variation",
+        "rnbqkbnr/ppp2ppp/4p3/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3": "French Defense, Exchange Variation",
+        
+        # === CARO-KANN DEFENSE (1.e4 c6) ===
+        "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2": "Caro-Kann Defense",
+        "rnbqkbnr/pp1ppppp/2p5/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 2": "Caro-Kann Defense, Advance Variation",
+        "rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3": "Caro-Kann Defense, Exchange Variation",
+        
+        # === ALEKHINE'S DEFENSE (1.e4 Nf6) ===
+        "rnbqkb1r/pppppppp/5n2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 1 2": "Alekhine's Defense",
+        "rnbqkb1r/pppppppp/5n2/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 2": "Alekhine's Defense, Chase Variation",
+        
+        # === SCANDINAVIAN DEFENSE (1.e4 d5) ===
+        "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2": "Scandinavian Defense",
+        "rnbqkbnr/ppp1pppp/8/8/3pP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3": "Scandinavian Defense, Modern Variation",
+        
+        # === QUEEN'S PAWN OPENINGS (1.d4) ===
+        "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1": "Queen's Pawn Opening",
+        "rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2": "Queen's Pawn Game",
+        
+        # Queen's Gambit
+        "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq - 0 2": "Queen's Gambit",
+        "rnbqkbnr/ppp2ppp/8/3pp3/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3": "Queen's Gambit Accepted",
+        "rnbqkbnr/ppp1pppp/8/8/2pP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3": "Queen's Gambit Declined",
+        
+        # King's Indian Defense
+        "rnbqkb1r/pppppp1p/5np1/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 2 3": "King's Indian Defense",
+        "rnbqk2r/ppppppbp/5np1/8/2PP4/2N5/PP2PPPP/R1BQKBNR b KQkq - 3 4": "King's Indian Defense, Classical",
+        
+        # Nimzo-Indian Defense  
+        "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4": "Nimzo-Indian Defense",
+        "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N2N2/PP2PPPP/R1BQKB1R b KQkq - 3 4": "Nimzo-Indian Defense, Classical",
+        
+        # Queen's Indian Defense
+        "rnbqkb1r/p1pp1ppp/1p2pn2/8/2PP4/5N2/PP2PPPP/RNBQKB1R w KQkq - 0 4": "Queen's Indian Defense",
+        
+        # Grünfeld Defense
+        "rnbqkb1r/ppp1pp1p/5np1/3p4/2PP4/2N5/PP2PPPP/R1BQKBNR b KQkq - 2 4": "Grünfeld Defense",
+        "rnbqk2r/ppp1ppbp/5np1/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R b KQkq - 3 5": "Grünfeld Defense, Exchange Variation",
+        
+        # === ENGLISH OPENING (1.c4) ===
+        "rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq - 0 1": "English Opening",
+        "rnbqkbnr/pppp1ppp/8/4p3/2P5/8/PP1PPPPP/RNBQKBNR w KQkq - 0 2": "English Opening, King's English",
+        "rnbqkbnr/pp1ppppp/8/2p5/2P5/8/PP1PPPPP/RNBQKBNR w KQkq - 0 2": "English Opening, Symmetrical",
+        "rnbqkb1r/pppppppp/5n2/8/2P5/8/PP1PPPPP/RNBQKBNR w KQkq - 1 2": "English Opening, Anglo-Indian Defense",
+        
+        # === FLANK OPENINGS ===
+        # Réti Opening
+        "rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq - 1 1": "Réti Opening",
+        "rnbqkbnr/ppp1pppp/8/3p4/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 0 2": "Réti Opening, Queen's Pawn Defense",
+        
+        # Bird's Opening
+        "rnbqkbnr/pppppppp/8/8/5P2/8/PPPPP1PP/RNBQKBNR b KQkq - 0 1": "Bird's Opening",
+        "rnbqkbnr/ppp1pppp/8/3p4/5P2/8/PPPPP1PP/RNBQKBNR w KQkq - 0 2": "Bird's Opening, Dutch Defense",
+        
+        # Larsen's Opening
+        "rnbqkbnr/pppppppp/8/8/8/1P6/P1PPPPPP/RNBQKBNR b KQkq - 0 1": "Larsen's Opening",
+        
+        # Polish Opening
+        "rnbqkbnr/pppppppp/8/8/1P6/8/P1PPPPPP/RNBQKBNR b KQkq - 0 1": "Polish Opening",
+        
+        # === IRREGULAR OPENINGS ===
+        "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2": "King's Gambit",
         "rnbqkbnr/pppp2pp/8/4pp2/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 3": "Latvian Gambit",
+        "rnbq1rk1/ppp2ppp/4pn2/3p4/1bPP4/2N2N2/PP2PPPP/R1BQKB1R w KQ - 4 6": "Nimzo-Indian Defense, Rubinstein Variation",
     }
     
     fen_without_move_counters = " ".join(board.fen().split()[:4])
