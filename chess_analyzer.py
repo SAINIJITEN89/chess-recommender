@@ -33,6 +33,10 @@ class ChessAnalyzer:
         """Parse various chess position formats into a chess.Board object."""
         position_str = position_str.strip()
         
+        # Starting position keywords - check this first
+        if position_str.lower() in ['start', 'starting', 'initial', 'new']:
+            return chess.Board()
+        
         # FEN notation
         if len(position_str.split()) >= 4 and ('/' in position_str):
             try:
@@ -46,25 +50,43 @@ class ChessAnalyzer:
                 board = chess.Board()
                 # Split by spaces and clean up
                 moves = position_str.replace(',', ' ').split()
+                invalid_moves = []
+                
+                # First pass: validate all moves before processing any
+                temp_board = chess.Board()
+                for i, move_str in enumerate(moves):
+                    move_str = move_str.strip('.,')
+                    if move_str and not move_str.isdigit() and move_str != '...':
+                        try:
+                            move = temp_board.parse_san(move_str)
+                            temp_board.push(move)
+                        except ValueError:
+                            # Track invalid moves with their position
+                            invalid_moves.append((i + 1, move_str))
+                
+                # If any invalid moves found, reject the entire sequence
+                if invalid_moves:
+                    invalid_list = ", ".join([f"{Colors.RED}'{move}'{Colors.RESET} (position {pos})" for pos, move in invalid_moves])
+                    total_moves = len([m for m in moves if m.strip('.,') and not m.isdigit() and m != '...'])
+                    raise ValueError(f"\n{Colors.RED}Invalid move sequence:{Colors.RESET} {invalid_list}\n")
+                
+                # If all moves are valid, process them
                 move_count = 0
                 for move_str in moves:
                     move_str = move_str.strip('.,')
                     if move_str and not move_str.isdigit() and move_str != '...':
-                        try:
-                            move = board.parse_san(move_str)
-                            board.push(move)
-                            move_count += 1
-                        except ValueError:
-                            continue
+                        move = board.parse_san(move_str)
+                        board.push(move)
+                        move_count += 1
+                
                 # If we successfully parsed at least one move, return the board
                 if move_count > 0:
                     return board
+            except ValueError:
+                # Re-raise ValueError with move parsing details
+                raise
             except:
                 pass
-        
-        # Starting position keywords
-        if position_str.lower() in ['start', 'starting', 'initial', 'new']:
-            return chess.Board()
         
         # If nothing else works, try as FEN
         try:
@@ -190,9 +212,6 @@ def detect_opening(board: chess.Board) -> Optional[str]:
     # For now, we'll use common opening patterns based on piece positions
     
     opening_patterns = {
-        # Starting position
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1": "Starting Position",
-        
         # === KING'S PAWN OPENINGS (1.e4) ===
         "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1": "King's Pawn Opening",
         "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2": "King's Pawn Game",
@@ -335,23 +354,87 @@ def detect_opening(board: chess.Board) -> Optional[str]:
     
     return None
 
-def get_evaluation_color(eval_str: str) -> str:
-    """Get color for evaluation based on advantage level."""
+def get_evaluation_color(eval_str: str, board: chess.Board) -> str:
+    """Get color for evaluation based on advantage level and current player perspective."""
     try:
-        # Extract numeric value from evaluation string
+        # Handle mate evaluations
         if "Mate" in eval_str:
-            return Colors.GREEN + Colors.BOLD  # Mate is always significant
+            # Extract mate sign and consider player perspective
+            mate_is_positive = not eval_str.startswith('-')
+            
+            # Mate evaluations are from White's perspective:
+            # Positive mate = White delivers mate
+            # Negative mate = Black delivers mate
+            if board.turn == chess.WHITE:
+                # White's turn: positive mate = good, negative mate = bad
+                if mate_is_positive:
+                    return Colors.GREEN + Colors.BOLD  # White delivers mate
+                else:
+                    return Colors.RED + Colors.BOLD    # Black delivers mate (bad for White)
+            else:
+                # Black's turn: negative mate = good, positive mate = bad  
+                if mate_is_positive:
+                    return Colors.RED + Colors.BOLD    # White delivers mate (bad for Black)
+                else:
+                    return Colors.GREEN + Colors.BOLD  # Black delivers mate
         
-        eval_num = float(eval_str.replace('+', '').replace('-', ''))
+        # Extract numeric value keeping the sign
+        eval_num = float(eval_str.replace('+', ''))
         
+        # Adjust evaluation based on whose turn it is
+        # Chess evaluations are from White's perspective
+        if board.turn == chess.BLACK:
+            eval_num = -eval_num  # Flip for Black's perspective
+        
+        # Color based on advantage for current player
         if eval_num >= 1.0:
             return Colors.GREEN  # Strong advantage
         elif eval_num >= 0.3:
             return Colors.YELLOW  # Slight advantage
+        elif eval_num <= -1.0:
+            return Colors.RED  # Strong disadvantage
+        elif eval_num <= -0.3:
+            return Colors.YELLOW  # Slight disadvantage
         else:
             return Colors.WHITE  # Equal/minimal advantage
     except:
         return Colors.WHITE  # Default
+
+def format_move_sequence(board: chess.Board) -> str:
+    """Format the move sequence in a readable format."""
+    if not board.move_stack:
+        return "(starting position)"
+    
+    moves = []
+    temp_board = chess.Board()
+    
+    for i, move in enumerate(board.move_stack):
+        move_number = (i // 2) + 1
+        if i % 2 == 0:  # White's move
+            moves.append(f"{move_number}.{temp_board.san(move)}")
+        else:  # Black's move
+            moves.append(temp_board.san(move))
+        temp_board.push(move)
+    
+    total_pairs = (len(board.move_stack) + 1) // 2
+    
+    if total_pairs <= 3:
+        return " ".join(moves)
+    else:
+        # Show last 3 pairs with ellipsis
+        last_moves = []
+        start_index = max(0, len(moves) - 6)  # Last 6 half-moves = 3 pairs
+        
+        # Adjust start_index to begin with a move number
+        while start_index < len(moves) and not moves[start_index].split('.')[0].isdigit():
+            start_index += 1
+        
+        if start_index < len(moves):
+            last_moves = moves[start_index:]
+            return "..." + " ".join(last_moves)
+        else:
+            # Fallback to last few moves
+            return "..." + " ".join(moves[-6:])
 
 def print_analysis(board: chess.Board, analysis: List[Tuple[str, float, str, str]]):
     """Print formatted analysis results with color coding."""
@@ -360,23 +443,25 @@ def print_analysis(board: chess.Board, analysis: List[Tuple[str, float, str, str
     black_indicator = "⚫"
     
     if board.turn == chess.WHITE:
-        turn_display = f"\nTurn: {Colors.WHITE}{white_indicator} White{Colors.RESET}"
+        turn_display = f"\n{Colors.BOLD}Turn:{Colors.RESET} {Colors.WHITE}{white_indicator} White{Colors.RESET}"
     else:
-        turn_display = f"\nTurn: {Colors.BLACK}{Colors.BOLD}{black_indicator} Black{Colors.RESET}"
+        turn_display = f"\n{Colors.BOLD}Turn:{Colors.RESET} {Colors.BLACK}{Colors.BOLD}{black_indicator} Black{Colors.RESET}"
     
-    print(f"FEN: {board.fen()}")
+    move_sequence = format_move_sequence(board)
+    print(f"{Colors.BOLD}Move Sequence:{Colors.RESET} {move_sequence}")
+    print(f"{Colors.BOLD}FEN:{Colors.RESET} {board.fen()}")
     
     # Detect and display opening name if available
     opening = detect_opening(board)
     if opening:
-        print(f"Opening: {Colors.BLUE}{Colors.BOLD}{opening}{Colors.RESET}")
+        print(f"{Colors.BOLD}Opening:{Colors.RESET} {Colors.BLUE}{Colors.BOLD}{opening}{Colors.RESET}")
     
     print(turn_display)
     print(f"\n{Colors.BOLD}Top 3 Recommended Moves:{Colors.RESET}")
     print("-" * 60)
     
     for i, (move, evaluation, pv, reasoning) in enumerate(analysis, 1):
-        eval_color = get_evaluation_color(evaluation)
+        eval_color = get_evaluation_color(evaluation, board)
         print(f"{Colors.BOLD}{i}.{Colors.RESET} {Colors.BOLD}{move}{Colors.RESET}")
         print(f"   Evaluation: {eval_color}{evaluation}{Colors.RESET}")
         print(f"   Principal Variation: {pv}")
@@ -401,7 +486,7 @@ def main():
             print_analysis(board, analysis)
             
         except ValueError as e:
-            print(f"Error parsing position: {e}")
+            print(f"{Colors.RED}{e}{Colors.RESET}")
             sys.exit(1)
         except Exception as e:
             print(f"Analysis error: {e}")
