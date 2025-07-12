@@ -94,57 +94,307 @@ class ChessAnalyzer:
         except:
             raise ValueError(f"Could not parse position: {position_str}")
     
-    def get_move_reasoning(self, board: chess.Board, move: chess.Move) -> str:
-        """Generate reasoning for why a move is good."""
-        reasoning = []
+    def detect_tactical_patterns(self, board: chess.Board, move: chess.Move) -> List[str]:
+        """Detect tactical patterns and motifs in the move."""
+        patterns = []
+        board_copy = board.copy()
         
-        # Make the move temporarily to analyze
+        # Check if move creates or exploits tactical motifs
+        piece = board.piece_at(move.from_square)
+        target_piece = board.piece_at(move.to_square)
+        
+        # Fork detection
+        if piece and piece.piece_type == chess.KNIGHT:
+            board_copy.push(move)
+            attacks = list(board_copy.attacks(move.to_square))
+            valuable_targets = []
+            for square in attacks:
+                attacked_piece = board_copy.piece_at(square)
+                if attacked_piece and attacked_piece.color != piece.color:
+                    if attacked_piece.piece_type in [chess.KING, chess.QUEEN, chess.ROOK]:
+                        valuable_targets.append(attacked_piece.piece_type)
+            if len(valuable_targets) >= 2:
+                patterns.append("Creates knight fork")
+            board_copy.pop()
+        
+        # Pin detection
+        if piece and piece.piece_type in [chess.BISHOP, chess.ROOK, chess.QUEEN]:
+            board_copy.push(move)
+            # Check if move creates a pin along the piece's attack lines
+            for square in board_copy.attacks(move.to_square):
+                pinned_piece = board_copy.piece_at(square)
+                if pinned_piece and pinned_piece.color != piece.color:
+                    # Check if there's a more valuable piece behind it
+                    from_file, from_rank = chess.square_file(move.to_square), chess.square_rank(move.to_square)
+                    to_file, to_rank = chess.square_file(square), chess.square_rank(square)
+                    
+                    # Calculate direction
+                    file_diff = to_file - from_file
+                    rank_diff = to_rank - from_rank
+                    
+                    if file_diff != 0:
+                        file_diff = file_diff // abs(file_diff)
+                    if rank_diff != 0:
+                        rank_diff = rank_diff // abs(rank_diff)
+                    
+                    # Look beyond the pinned piece
+                    next_file = to_file + file_diff
+                    next_rank = to_rank + rank_diff
+                    
+                    while 0 <= next_file <= 7 and 0 <= next_rank <= 7:
+                        next_square = chess.square(next_file, next_rank)
+                        behind_piece = board_copy.piece_at(next_square)
+                        if behind_piece:
+                            if (behind_piece.color != piece.color and 
+                                behind_piece.piece_type > pinned_piece.piece_type):
+                                patterns.append(f"Pins {chess.piece_name(pinned_piece.piece_type)}")
+                            break
+                        next_file += file_diff
+                        next_rank += rank_diff
+            board_copy.pop()
+        
+        # Skewer detection (similar to pin but with valuable piece in front)
+        if piece and piece.piece_type in [chess.BISHOP, chess.ROOK, chess.QUEEN]:
+            if target_piece and target_piece.piece_type in [chess.KING, chess.QUEEN]:
+                patterns.append("Creates skewer threat")
+        
+        # Discovered attack
+        if piece:
+            # Check if moving this piece reveals an attack from another piece
+            for square in chess.SQUARES:
+                ally_piece = board.piece_at(square)
+                if (ally_piece and ally_piece.color == piece.color and 
+                    ally_piece.piece_type in [chess.BISHOP, chess.ROOK, chess.QUEEN]):
+                    # Check if move.from_square was blocking ally_piece's attack
+                    attacks_before = list(board.attacks(square))
+                    board_copy.push(move)
+                    attacks_after = list(board_copy.attacks(square))
+                    board_copy.pop()
+                    
+                    new_attacks = set(attacks_after) - set(attacks_before)
+                    for new_target in new_attacks:
+                        attacked_piece = board.piece_at(new_target)
+                        if (attacked_piece and attacked_piece.color != piece.color and
+                            attacked_piece.piece_type in [chess.KING, chess.QUEEN, chess.ROOK]):
+                            patterns.append("Discovered attack")
+                            break
+        
+        return patterns
+
+    def analyze_positional_factors(self, board: chess.Board, move: chess.Move) -> List[str]:
+        """Analyze positional aspects of the move."""
+        factors = []
+        piece = board.piece_at(move.from_square)
+        
+        if not piece:
+            return factors
+        
+        board_copy = board.copy()
+        
+        # Piece activity analysis
+        attacks_before = len(list(board.attacks(move.from_square)))
+        board_copy.push(move)
+        attacks_after = len(list(board_copy.attacks(move.to_square)))
+        board_copy.pop()
+        
+        if attacks_after > attacks_before + 1:
+            factors.append(f"Increases {chess.piece_name(piece.piece_type)} activity")
+        
+        # Central control
+        central_squares = {chess.D4, chess.D5, chess.E4, chess.E5}
+        extended_center = {chess.C3, chess.C4, chess.C5, chess.C6, 
+                          chess.D3, chess.D6, chess.E3, chess.E6,
+                          chess.F3, chess.F4, chess.F5, chess.F6}
+        
+        if move.to_square in central_squares:
+            factors.append("Controls central square")
+        elif move.to_square in extended_center:
+            factors.append("Supports center control")
+        
+        # King safety considerations
+        if piece.piece_type == chess.KING:
+            if board.is_castling(move):
+                factors.append("Improves king safety through castling")
+            else:
+                # Check if king is moving to safety
+                file_distance = abs(chess.square_file(move.to_square) - 3.5)
+                if file_distance > abs(chess.square_file(move.from_square) - 3.5):
+                    factors.append("King seeks safety on the flank")
+        
+        # Piece development
+        if piece.piece_type in [chess.KNIGHT, chess.BISHOP]:
+            back_rank = 0 if piece.color == chess.WHITE else 7
+            if chess.square_rank(move.from_square) == back_rank:
+                factors.append(f"Develops {chess.piece_name(piece.piece_type)}")
+        
+        # Pawn structure considerations
+        if piece.piece_type == chess.PAWN:
+            # Pawn advancement
+            if piece.color == chess.WHITE and chess.square_rank(move.to_square) >= 4:
+                factors.append("Advances pawn to strong outpost")
+            elif piece.color == chess.BLACK and chess.square_rank(move.to_square) <= 3:
+                factors.append("Advances pawn to strong outpost")
+            
+            # Pawn support
+            board_copy.push(move)
+            pawn_file = chess.square_file(move.to_square)
+            for adjacent_file in [pawn_file - 1, pawn_file + 1]:
+                if 0 <= adjacent_file <= 7:
+                    support_square = chess.square(adjacent_file, chess.square_rank(move.to_square) - (1 if piece.color == chess.WHITE else -1))
+                    if 0 <= support_square <= 63:
+                        support_piece = board_copy.piece_at(support_square)
+                        if (support_piece and support_piece.piece_type == chess.PAWN and 
+                            support_piece.color == piece.color):
+                            factors.append("Creates pawn chain")
+                            break
+            board_copy.pop()
+        
+        return factors
+
+    def get_opening_context(self, board: chess.Board, move: chess.Move) -> str:
+        """Get opening-specific context for the move."""
+        # Check if we're still in opening (rough heuristic)
+        if len(board.move_stack) > 15:
+            return ""
+        
+        # Get current opening name
+        opening = detect_opening(board)
+        if not opening:
+            return ""
+        
+        # Make the move and see if it leads to a known opening
         board_copy = board.copy()
         board_copy.push(move)
+        new_opening = detect_opening(board_copy)
         
-        # Basic move type analysis
+        if new_opening and new_opening != opening:
+            return f"Transitions to {new_opening}"
+        elif opening:
+            # Common opening principles
+            piece = board.piece_at(move.from_square)
+            if piece and piece.piece_type == chess.KNIGHT:
+                if move.to_square in [chess.F3, chess.C3] and piece.color == chess.WHITE:
+                    return "Follows opening principle: knights before bishops"
+                elif move.to_square in [chess.F6, chess.C6] and piece.color == chess.BLACK:
+                    return "Follows opening principle: knights before bishops"
+            
+            if piece and piece.piece_type == chess.BISHOP:
+                if opening.startswith("Ruy Lopez") and move.to_square == chess.B5:
+                    return "Classical Ruy Lopez development"
+                elif opening.startswith("Italian") and move.to_square == chess.C4:
+                    return "Italian Game bishop development"
+        
+        return ""
+
+    def evaluate_endgame_factors(self, board: chess.Board, move: chess.Move) -> List[str]:
+        """Analyze endgame-specific factors."""
+        factors = []
+        
+        # Simple material count to detect endgame
+        material_count = sum(1 for square in chess.SQUARES 
+                           if board.piece_at(square) and board.piece_at(square).piece_type != chess.KING)
+        
+        if material_count <= 12:  # Rough endgame threshold
+            piece = board.piece_at(move.from_square)
+            
+            if piece and piece.piece_type == chess.KING:
+                factors.append("King activation in endgame")
+                
+                # King centralization
+                center_distance_before = max(abs(chess.square_file(move.from_square) - 3.5),
+                                           abs(chess.square_rank(move.from_square) - 3.5))
+                center_distance_after = max(abs(chess.square_file(move.to_square) - 3.5),
+                                          abs(chess.square_rank(move.to_square) - 3.5))
+                
+                if center_distance_after < center_distance_before:
+                    factors.append("Centralizes king")
+            
+            elif piece and piece.piece_type == chess.PAWN:
+                # Passed pawn advancement
+                pawn_file = chess.square_file(move.to_square)
+                is_passed = True
+                
+                for rank in range(8):
+                    for file_offset in [-1, 0, 1]:
+                        check_file = pawn_file + file_offset
+                        if 0 <= check_file <= 7:
+                            check_square = chess.square(check_file, rank)
+                            enemy_piece = board.piece_at(check_square)
+                            if (enemy_piece and enemy_piece.piece_type == chess.PAWN and 
+                                enemy_piece.color != piece.color):
+                                # Check if this pawn blocks our pawn's advance
+                                if piece.color == chess.WHITE and rank > chess.square_rank(move.to_square):
+                                    is_passed = False
+                                elif piece.color == chess.BLACK and rank < chess.square_rank(move.to_square):
+                                    is_passed = False
+                
+                if is_passed:
+                    factors.append("Advances passed pawn")
+        
+        return factors
+
+    def get_move_reasoning(self, board: chess.Board, move: chess.Move) -> str:
+        """Generate comprehensive reasoning for why a move is good."""
+        reasoning_parts = []
+        
+        # 1. Basic tactical elements
+        basic_tactics = []
         if board.is_capture(move):
             captured_piece = board.piece_at(move.to_square)
             if captured_piece:
-                reasoning.append(f"Captures {captured_piece.symbol().upper()}")
+                basic_tactics.append(f"Captures {captured_piece.symbol().upper()}")
         
-        if board.is_check():
-            reasoning.append("Gives check")
+        board_copy = board.copy()
+        board_copy.push(move)
+        
+        if board_copy.is_checkmate():
+            basic_tactics.append("Checkmate!")
+        elif board_copy.is_check():
+            basic_tactics.append("Gives check")
         
         if move.promotion:
-            reasoning.append(f"Promotes to {chess.piece_name(move.promotion)}")
+            basic_tactics.append(f"Promotes to {chess.piece_name(move.promotion)}")
         
-        # Castling
         if board.is_castling(move):
-            reasoning.append("Castles for king safety")
+            basic_tactics.append("Castles for king safety")
         
-        # Piece development/positioning
-        piece = board.piece_at(move.from_square)
-        if piece:
-            piece_name = chess.piece_name(piece.piece_type).capitalize()
-            
-            # Central squares
-            central_squares = [chess.D4, chess.D5, chess.E4, chess.E5]
-            if move.to_square in central_squares:
-                reasoning.append(f"Controls center with {piece_name}")
-            
-            # Knight moves
-            if piece.piece_type == chess.KNIGHT:
-                if move.to_square in central_squares or move.to_square in [chess.C3, chess.F3, chess.C6, chess.F6]:
-                    reasoning.append("Develops knight to active square")
-            
-            # Bishop moves
-            if piece.piece_type == chess.BISHOP:
-                if len(list(board_copy.attacks(move.to_square))) > len(list(board.attacks(move.from_square))):
-                    reasoning.append("Improves bishop activity")
+        # 2. Advanced tactical patterns
+        tactical_patterns = self.detect_tactical_patterns(board, move)
         
-        # Tactical motifs
-        if board_copy.is_checkmate():
-            reasoning.append("Checkmate!")
-        elif len(list(board_copy.legal_moves)) < len(list(board.legal_moves)):
-            reasoning.append("Restricts opponent's options")
+        # 3. Positional factors
+        positional_factors = self.analyze_positional_factors(board, move)
         
-        return "; ".join(reasoning) if reasoning else "Positional improvement"
+        # 4. Opening context
+        opening_context = self.get_opening_context(board, move)
+        
+        # 5. Endgame considerations
+        endgame_factors = self.evaluate_endgame_factors(board, move)
+        
+        # Compile reasoning with priorities
+        if basic_tactics:
+            reasoning_parts.extend(basic_tactics)
+        
+        if tactical_patterns:
+            reasoning_parts.extend(tactical_patterns)
+        
+        if opening_context:
+            reasoning_parts.append(opening_context)
+        
+        if positional_factors:
+            reasoning_parts.extend(positional_factors[:2])  # Limit to top 2 positional factors
+        
+        if endgame_factors:
+            reasoning_parts.extend(endgame_factors)
+        
+        # If no specific reasoning found, provide generic positional assessment
+        if not reasoning_parts:
+            piece = board.piece_at(move.from_square)
+            if piece:
+                reasoning_parts.append(f"Improves {chess.piece_name(piece.piece_type)} position")
+            else:
+                reasoning_parts.append("Positional improvement")
+        
+        return "; ".join(reasoning_parts)
     
     def analyze_position(self, board: chess.Board, num_moves=3) -> List[Tuple[str, float, str, str]]:
         """Analyze position and return top moves with evaluations and reasoning."""
